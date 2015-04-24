@@ -1,0 +1,6 @@
+FreeImage/Source/**/*.o
+FreeImage/*.so
+FreeImage/*.a
+FreeImage/Dist
+Cargo.lock
+target
