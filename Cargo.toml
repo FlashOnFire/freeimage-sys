@@ -2,7 +2,7 @@
 
 name = "freeimage-sys"
 version = "0.0.1"
-authors = [ "Hervé Drolon <drolon@infonie.fr>", Arturo Castro <me@arturocastro.net> ]
+authors = [ "Hervé Drolon <drolon@infonie.fr>", "Arturo Castro <me@arturocastro.net>" ]
 links = "freeimage"
 build = "build.rs"
 
