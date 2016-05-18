@@ -1,8 +1,8 @@
-#![feature(convert)]
 use std::process::Command;
 use std::env;
 use std::fs;
 use std::path::Path;
+#[cfg(macos)]
 use std::ffi::OsString;
 
 #[cfg(macos)]
