@@ -134,7 +134,8 @@ fn build_windows(target: &str) {
 	};
 
 	let output = msbuild.arg(freeimage_proj)
-		.arg(&format!("-property:Configuration={} -property:Platform={}", config, platform))
+		.arg(&format!("-property:Configuration={}", config))
+		.arg(&format!("-property:Platform={}", platform))
 		.current_dir(&freeimage_copy)
 		.output()
 		.unwrap();
