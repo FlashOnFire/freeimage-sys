@@ -1,6 +1,8 @@
 FreeImage/Source/**/*.o
+FreeImage/Source/**/*.obj
 FreeImage/*.so
 FreeImage/*.a
 FreeImage/Dist
 Cargo.lock
 target
+.history
