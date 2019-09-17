@@ -1,10 +1,15 @@
+#[cfg(windows)]
+extern crate cc;
+
 use std::process::Command;
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::ffi::OsString;
+#[cfg(unix)]
 use std::os::unix::ffi::OsStringExt;
 
+#[cfg(target="macos")]
 fn build_macos() {
 	let freeimage_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
@@ -66,14 +71,98 @@ fn build_emscripten() {
     println!("cargo:rustc-flags= -L native={}",out_dir);
 }
 
+// #[cfg(windows)]
+// fn retarget_ms_proj(target: &str, proj: &str, freeimage_native_dir: &PathBuf){
+// 	let mut devenv = cc::windows_registry::find(target, "devenv.exe")
+// 		.expect("Couldn't find devenv, perhaps you need to install visual studio?");
+
+// 	let output = devenv
+// 		.arg(proj)
+// 		.arg("/upgrade")
+// 		.current_dir(&freeimage_native_dir)
+// 		.output()
+// 		.expect("Couldn't Freeiamge visual studio update solution");	
+
+// 	if !output.status.success(){
+// 		panic!("{}", String::from_utf8(output.stdout).unwrap());
+// 	}
+// }
+
+#[cfg(windows)]
+fn build_windows(target: &str) {
+	let freeimage_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
+	let freeimage_proj = "FreeImage.2017.sln";
+
+	// retarget_ms_proj(target, freeimage_proj, &freeimage_native_dir);
+	
+	let mut msbuild = cc::windows_registry::find(target, "msbuild.exe")
+		.expect("Couldn't find msbuild, perhaps you need to install visual studio?");
+
+	#[cfg(debug_assertions)]
+	let config = "Debug";
+
+	#[cfg(not(debug_assertions))]
+	let config = "Release";
+
+	let platform = if target.contains("x86_64") {
+		"x64"
+	} else if target.contains("thumbv7a") {
+		"arm"
+	} else if target.contains("aarch64") {
+		"ARM64"
+	} else if target.contains("i686") {
+		"x86"	
+	} else {
+		panic!("unsupported msvc target: {}", target);
+	}
+	
+	let output = msbuild.arg(freeimage_proj)
+		.arg(&format!("-property:Configuration={} -property:Platform={}", config, platform))
+		.current_dir(&freeimage_native_dir)
+		.output()
+		.unwrap();
+
+	if !output.status.success(){
+		panic!("{}", String::from_utf8(output.stdout).unwrap());
+	}
+	
+	#[cfg(debug_assertions)]
+	let libname = "FreeImaged";
+
+	#[cfg(not(debug_assertions))]
+	let libname = "FreeImage";
+
+	let out_dir = env::var("OUT_DIR").unwrap();
+	let src_dir = freeimage_native_dir
+		.join(platform)
+		.join(config);
+
+	let lib_name = format!("{}.lib", libname);
+	let dst_path = Path::new(&out_dir).join(&lib_name);
+	let src_path = src_dir.join(&lib_name);
+	fs::copy(src_path, dst_path).unwrap();
+
+	let dll_name = format!("{}.dll", libname);
+	let dst_path = Path::new(&out_dir).join(&dll_name);
+	let src_path = src_dir.join(&dll_name);
+	fs::copy(src_path, dst_path).unwrap();
+
+	println!("cargo:rustc-flags= -L native={}",out_dir);
+}
+
 fn main(){
 	let target_triple = env::var("TARGET").unwrap();
 	if target_triple.contains("linux") {
 		build_linux()
 	}else if target_triple.contains("darwin") {
+		#[cfg(target="macos")]
 		build_macos()
 	}else if target_triple.contains("emscripten") {
 		build_emscripten()
+	}else if target_triple.contains("windows"){
+		#[cfg(windows)]
+		build_windows(&target_triple)
 	}else{
 		panic!("target OS {} not suported yet", target_triple);
 	}

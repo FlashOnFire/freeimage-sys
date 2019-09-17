@@ -13,3 +13,6 @@ build = "build.rs"
 [lib]
 name = "freeimage_sys"
 path = "empty.rs"
+
+[target.'cfg(windows)'.build-dependencies]
+cc = "1"
