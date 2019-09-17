@@ -81,7 +81,7 @@ fn build_emscripten() {
 // 		.arg("/upgrade")
 // 		.current_dir(&freeimage_native_dir)
 // 		.output()
-// 		.expect("Couldn't Freeiamge visual studio update solution");	
+// 		.expect("Couldn't Freeiamge visual studio update solution");
 
 // 	if !output.status.success(){
 // 		panic!("{}", String::from_utf8(output.stdout).unwrap());
@@ -95,7 +95,7 @@ fn build_windows(target: &str) {
 	let freeimage_proj = "FreeImage.2017.sln";
 
 	// retarget_ms_proj(target, freeimage_proj, &freeimage_native_dir);
-	
+
 	let mut msbuild = cc::windows_registry::find(target, "msbuild.exe")
 		.expect("Couldn't find msbuild, perhaps you need to install visual studio?");
 
@@ -112,11 +112,11 @@ fn build_windows(target: &str) {
 	} else if target.contains("aarch64") {
 		"ARM64"
 	} else if target.contains("i686") {
-		"x86"	
+		"x86"
 	} else {
 		panic!("unsupported msvc target: {}", target);
-	}
-	
+	};
+
 	let output = msbuild.arg(freeimage_proj)
 		.arg(&format!("-property:Configuration={} -property:Platform={}", config, platform))
 		.current_dir(&freeimage_native_dir)
@@ -126,7 +126,7 @@ fn build_windows(target: &str) {
 	if !output.status.success(){
 		panic!("{}", String::from_utf8(output.stdout).unwrap());
 	}
-	
+
 	#[cfg(debug_assertions)]
 	let libname = "FreeImaged";
 
