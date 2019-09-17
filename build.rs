@@ -1,5 +1,6 @@
 #[cfg(windows)]
 extern crate cc;
+extern crate fs_extra;
 
 use std::process::Command;
 use std::env;
@@ -13,6 +14,10 @@ use std::os::unix::ffi::OsStringExt;
 fn build_macos() {
 	let freeimage_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
+    let out_dir = env::var("OUT_DIR").unwrap();
+	let freeimage_copy = Path::new(&out_dir).join("FreeImage");
+	fs_extra::dir::remove(&freeimage_copy);
+	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
 	let xcode_select_out: OsString = OsString::from_vec(Command::new("xcode-select")
                 .arg("-print-path")
                 .output().unwrap()
@@ -29,13 +34,13 @@ fn build_macos() {
     if sdk.contains("MacOSX"){
         let version = &sdk[6..];
         Command::new("make")
-		    .current_dir(&freeimage_native_dir)
+		    .current_dir(&freeimage_copy)
 		    .env("MACOSX_SDK",version)
 		    .arg("-j4")
 		    .status().unwrap();
 	    let out_dir = env::var("OUT_DIR").unwrap();
 	    let dest_path = Path::new(&out_dir).join("libfreeimage.a");
-	    fs::copy(freeimage_native_dir.join("Dist/libfreeimage.a"),dest_path).unwrap();
+	    fs::copy(freeimage_copy.join("Dist/libfreeimage.a"),dest_path).unwrap();
 	    println!("cargo:rustc-flags= -L native={}",out_dir);
 
     }else{
@@ -46,28 +51,35 @@ fn build_macos() {
 fn build_linux() {
 	let freeimage_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
-    Command::new("make")
-	    .current_dir(&freeimage_native_dir)
-	    .arg("-j4")
-	    .status().unwrap();
     let out_dir = env::var("OUT_DIR").unwrap();
+	let freeimage_copy = Path::new(&out_dir).join("FreeImage");
+	fs_extra::dir::remove(&freeimage_copy);
+	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
+    Command::new("make")
+	    .current_dir(&freeimage_copy)
+	    .arg("-j4")
+	    .status()
+		.unwrap();
     let dest_path = Path::new(&out_dir).join("libfreeimage.a");
-    fs::copy(freeimage_native_dir.join("Dist/libfreeimage.a"),dest_path).unwrap();
+    fs::copy(freeimage_copy.join("Dist/libfreeimage.a"),dest_path).unwrap();
     println!("cargo:rustc-flags= -L native={}",out_dir);
 }
 
 fn build_emscripten() {
 	let freeimage_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
+    let out_dir = env::var("OUT_DIR").unwrap();
+	let freeimage_copy = Path::new(&out_dir).join("FreeImage");
+	fs_extra::dir::remove(&freeimage_copy);
+	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
     Command::new("emmake")
 		.arg("make")
-	    .current_dir(&freeimage_native_dir)
+	    .current_dir(&freeimage_copy)
 	    .arg("-j4")
 	    .status()
 		.unwrap();
-    let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("libfreeimage.a");
-    fs::copy(freeimage_native_dir.join("Dist/libfreeimage.a"),dest_path).unwrap();
+    fs::copy(freeimage_copy.join("Dist/libfreeimage.a"),dest_path).unwrap();
     println!("cargo:rustc-flags= -L native={}",out_dir);
 }
 
@@ -92,9 +104,13 @@ fn build_emscripten() {
 fn build_windows(target: &str) {
 	let freeimage_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
+    let out_dir = env::var("OUT_DIR").unwrap();
+	let freeimage_copy = Path::new(&out_dir).join("FreeImage");
+	fs_extra::dir::remove(&freeimage_copy);
+	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
 	let freeimage_proj = "FreeImage.2017.sln";
 
-	// retarget_ms_proj(target, freeimage_proj, &freeimage_native_dir);
+	// retarget_ms_proj(target, freeimage_proj, &freeimage_copy);
 
 	let mut msbuild = cc::windows_registry::find(target, "msbuild.exe")
 		.expect("Couldn't find msbuild, perhaps you need to install visual studio?");
@@ -119,7 +135,7 @@ fn build_windows(target: &str) {
 
 	let output = msbuild.arg(freeimage_proj)
 		.arg(&format!("-property:Configuration={} -property:Platform={}", config, platform))
-		.current_dir(&freeimage_native_dir)
+		.current_dir(&freeimage_copy)
 		.output()
 		.unwrap();
 
@@ -134,7 +150,7 @@ fn build_windows(target: &str) {
 	let libname = "FreeImage";
 
 	let out_dir = env::var("OUT_DIR").unwrap();
-	let src_dir = freeimage_native_dir
+	let src_dir = freeimage_copy
 		.join(platform)
 		.join(config);
 
