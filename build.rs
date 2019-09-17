@@ -5,18 +5,21 @@ extern crate fs_extra;
 use std::process::Command;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::mem::drop;
+
+#[cfg(target_os="macos")]
 use std::ffi::OsString;
-#[cfg(unix)]
+#[cfg(target_os="macos")]
 use std::os::unix::ffi::OsStringExt;
 
-#[cfg(target="macos")]
+#[cfg(target_os="macos")]
 fn build_macos() {
 	let freeimage_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
     let out_dir = env::var("OUT_DIR").unwrap();
 	let freeimage_copy = Path::new(&out_dir).join("FreeImage");
-	fs_extra::dir::remove(&freeimage_copy);
+	drop(fs_extra::dir::remove(&freeimage_copy));
 	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
 	let xcode_select_out: OsString = OsString::from_vec(Command::new("xcode-select")
                 .arg("-print-path")
@@ -33,14 +36,20 @@ fn build_macos() {
     let sdk = last_sdk_entry.path().as_path().file_stem().unwrap().to_str().unwrap().to_string();
     if sdk.contains("MacOSX"){
         let version = &sdk[6..];
-        Command::new("make")
+        let output = Command::new("make")
 		    .current_dir(&freeimage_copy)
 		    .env("MACOSX_SDK",version)
 		    .arg("-j4")
-		    .status().unwrap();
+		    .output()
+			.unwrap();
+		
+		if !output.status.success(){
+			panic!("{}", String::from_utf8(output.stdout).unwrap());
+		}
+
 	    let out_dir = env::var("OUT_DIR").unwrap();
 	    let dest_path = Path::new(&out_dir).join("libfreeimage.a");
-	    fs::copy(freeimage_copy.join("Dist/libfreeimage.a"),dest_path).unwrap();
+	    fs::copy(freeimage_copy.join("libfreeimage.a"),dest_path).unwrap();
 	    println!("cargo:rustc-flags= -L native={}",out_dir);
 
     }else{
@@ -53,13 +62,18 @@ fn build_linux() {
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
     let out_dir = env::var("OUT_DIR").unwrap();
 	let freeimage_copy = Path::new(&out_dir).join("FreeImage");
-	fs_extra::dir::remove(&freeimage_copy);
+	drop(fs_extra::dir::remove(&freeimage_copy));
 	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
-    Command::new("make")
+    let output = Command::new("make")
 	    .current_dir(&freeimage_copy)
 	    .arg("-j4")
-	    .status()
+	    .output()
 		.unwrap();
+		
+	if !output.status.success(){
+		panic!("{}", String::from_utf8(output.stdout).unwrap());
+	}
+	
     let dest_path = Path::new(&out_dir).join("libfreeimage.a");
     fs::copy(freeimage_copy.join("Dist/libfreeimage.a"),dest_path).unwrap();
     println!("cargo:rustc-flags= -L native={}",out_dir);
@@ -70,14 +84,19 @@ fn build_emscripten() {
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
     let out_dir = env::var("OUT_DIR").unwrap();
 	let freeimage_copy = Path::new(&out_dir).join("FreeImage");
-	fs_extra::dir::remove(&freeimage_copy);
+	drop(fs_extra::dir::remove(&freeimage_copy));
 	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
-    Command::new("emmake")
+    let output = Command::new("emmake")
 		.arg("make")
 	    .current_dir(&freeimage_copy)
 	    .arg("-j4")
-	    .status()
+	    .output()
 		.unwrap();
+		
+	if !output.status.success(){
+		panic!("{}", String::from_utf8(output.stdout).unwrap());
+	}
+		
     let dest_path = Path::new(&out_dir).join("libfreeimage.a");
     fs::copy(freeimage_copy.join("Dist/libfreeimage.a"),dest_path).unwrap();
     println!("cargo:rustc-flags= -L native={}",out_dir);
@@ -106,7 +125,7 @@ fn build_windows(target: &str) {
 	let freeimage_native_dir = Path::new(&freeimage_dir).join("FreeImage");
     let out_dir = env::var("OUT_DIR").unwrap();
 	let freeimage_copy = Path::new(&out_dir).join("FreeImage");
-	fs_extra::dir::remove(&freeimage_copy);
+	drop(fs_extra::dir::remove(&freeimage_copy));
 	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
 	let freeimage_proj = "FreeImage.2017.sln";
 
@@ -173,7 +192,7 @@ fn main(){
 	if target_triple.contains("linux") {
 		build_linux()
 	}else if target_triple.contains("darwin") {
-		#[cfg(target="macos")]
+		#[cfg(target_os="macos")]
 		build_macos()
 	}else if target_triple.contains("emscripten") {
 		build_emscripten()
