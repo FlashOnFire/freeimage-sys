@@ -6,3 +6,4 @@ FreeImage/Dist
 Cargo.lock
 target
 .history
+.vscode
