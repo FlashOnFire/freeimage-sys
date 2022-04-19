@@ -67,7 +67,7 @@ fn build_linux() {
     let output = Command::new("make")
 		.env("CXXFLAGS", "-std=c++98")
 	    .current_dir(&freeimage_copy)
-	    .arg("-j4")
+	    .arg("-j")
 	    .output()
 		.unwrap();
 
