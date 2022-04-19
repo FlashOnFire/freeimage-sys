@@ -42,7 +42,7 @@ fn build_macos() {
 		    .arg("-j4")
 		    .output()
 			.unwrap();
-		
+
 		if !output.status.success(){
 			panic!("{}", String::from_utf8(output.stdout).unwrap());
 		}
@@ -65,15 +65,16 @@ fn build_linux() {
 	drop(fs_extra::dir::remove(&freeimage_copy));
 	fs_extra::dir::copy(freeimage_native_dir, &out_dir, &fs_extra::dir::CopyOptions::new()).unwrap();
     let output = Command::new("make")
+		.env("CXXFLAGS", "-std=c++98")
 	    .current_dir(&freeimage_copy)
 	    .arg("-j4")
 	    .output()
 		.unwrap();
-		
+
 	if !output.status.success(){
-		panic!("{}", String::from_utf8(output.stdout).unwrap());
+		panic!("{}", String::from_utf8(output.stderr).unwrap());
 	}
-	
+
     let dest_path = Path::new(&out_dir).join("libfreeimage.a");
     fs::copy(freeimage_copy.join("Dist/libfreeimage.a"),dest_path).unwrap();
     println!("cargo:rustc-flags= -L native={}",out_dir);
@@ -92,11 +93,11 @@ fn build_emscripten() {
 	    .arg("-j4")
 	    .output()
 		.unwrap();
-		
+
 	if !output.status.success(){
 		panic!("{}", String::from_utf8(output.stdout).unwrap());
 	}
-		
+
     let dest_path = Path::new(&out_dir).join("libfreeimage.a");
     fs::copy(freeimage_copy.join("Dist/libfreeimage.a"),dest_path).unwrap();
     println!("cargo:rustc-flags= -L native={}",out_dir);
